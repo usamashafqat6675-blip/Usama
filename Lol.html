@@ -2,41 +2,118 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Catch the Ball Game</title>
+  <title>Catch the Ball Game + AI Chat</title>
   <style>
     body {
       margin: 0;
-      padding: 0;
-      text-align: center;
-      background: #f2f2f2;
       font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      background: #f2f2f2;
     }
+
+    /* Left side - Game */
+    #gameArea {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 10px;
+    }
+
     canvas {
       background: #333;
       display: block;
       margin: 20px auto;
       border: 2px solid #fff;
     }
+
     h1 {
       color: #333;
+    }
+
+    /* Right side - Chat */
+    #chatArea {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-left: 2px solid #ccc;
+      background: #fff;
+    }
+
+    #chatHistory {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .msg {
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 5px;
+      max-width: 80%;
+    }
+
+    .user {
+      background: #d1e7dd;
+      align-self: flex-end;
+    }
+
+    .ai {
+      background: #f8d7da;
+      align-self: flex-start;
+    }
+
+    #chatInputArea {
+      display: flex;
+      padding: 10px;
+      border-top: 2px solid #ccc;
+    }
+
+    #chatInput {
+      flex: 1;
+      padding: 8px;
+    }
+
+    #sendBtn {
+      padding: 8px 15px;
+      margin-left: 5px;
+      cursor: pointer;
+      background: #0d6efd;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
     }
   </style>
 </head>
 <body>
-  <h1>Catch the Ball 🎮</h1>
-  <canvas id="gameCanvas" width="400" height="500"></canvas>
+  <!-- Game Section -->
+  <div id="gameArea">
+    <h1>Catch the Ball 🎮</h1>
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
+  </div>
+
+  <!-- Chat Section -->
+  <div id="chatArea">
+    <div id="chatHistory"></div>
+    <div id="chatInputArea">
+      <input type="text" id="chatInput" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
 
   <script>
-    // Get canvas and context
+    /***********************
+     * GAME LOGIC
+     ***********************/
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // Game variables
     let score = 0;
     let gameOver = false;
-    const winScore = 10; // win after catching 10 balls
+    const winScore = 10;
 
-    // Paddle
     const paddle = {
       x: canvas.width / 2 - 40,
       y: canvas.height - 20,
@@ -45,7 +122,6 @@
       speed: 20
     };
 
-    // Ball
     const ball = {
       x: Math.random() * (canvas.width - 20) + 10,
       y: 0,
@@ -53,13 +129,11 @@
       dy: 3
     };
 
-    // Draw paddle
     function drawPaddle() {
       ctx.fillStyle = "#0f0";
       ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
     }
 
-    // Draw ball
     function drawBall() {
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
@@ -68,14 +142,12 @@
       ctx.closePath();
     }
 
-    // Draw score
     function drawScore() {
       ctx.fillStyle = "#fff";
       ctx.font = "16px Arial";
       ctx.fillText("Score: " + score, 10, 20);
     }
 
-    // Update game
     function update() {
       if (gameOver) return;
 
@@ -85,10 +157,8 @@
       drawBall();
       drawScore();
 
-      // Move ball
       ball.y += ball.dy;
 
-      // Check if ball hits paddle
       if (
         ball.y + ball.radius > paddle.y &&
         ball.x > paddle.x &&
@@ -98,7 +168,6 @@
         resetBall();
       }
 
-      // Win condition
       if (score >= winScore) {
         gameOver = true;
         ctx.fillStyle = "lime";
@@ -107,7 +176,6 @@
         return;
       }
 
-      // Lose condition
       if (ball.y + ball.radius > canvas.height) {
         gameOver = true;
         ctx.fillStyle = "red";
@@ -118,13 +186,11 @@
       requestAnimationFrame(update);
     }
 
-    // Reset ball position
     function resetBall() {
       ball.x = Math.random() * (canvas.width - 20) + 10;
       ball.y = 0;
     }
 
-    // Control paddle
     document.addEventListener("keydown", (e) => {
       if (e.key === "ArrowLeft" && paddle.x > 0) {
         paddle.x -= paddle.speed;
@@ -133,8 +199,66 @@
       }
     });
 
-    // Start game
     update();
+
+    /***********************
+     * CHAT LOGIC
+     ***********************/
+    const chatHistory = document.getElementById("chatHistory");
+    const chatInput = document.getElementById("chatInput");
+    const sendBtn = document.getElementById("sendBtn");
+
+    // Load history from localStorage
+    let history = JSON.parse(localStorage.getItem("chatHistory")) || [];
+
+    function renderHistory() {
+      chatHistory.innerHTML = "";
+      history.forEach(msg => {
+        const div = document.createElement("div");
+        div.className = "msg " + msg.sender;
+        div.textContent = msg.text;
+        chatHistory.appendChild(div);
+      });
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function addMessage(sender, text) {
+      history.push({ sender, text });
+      localStorage.setItem("chatHistory", JSON.stringify(history));
+      renderHistory();
+    }
+
+    function fakeAIResponse(userText) {
+      // Simple dummy AI response
+      if (userText.toLowerCase().includes("hello")) {
+        return "Hi there! Ready to catch some balls? 🎮";
+      } else if (userText.toLowerCase().includes("score")) {
+        return "Your current score is: " + score;
+      } else if (userText.toLowerCase().includes("help")) {
+        return "Use Left/Right arrow keys to move the paddle. Catch 10 balls to win!";
+      } else {
+        return "I'm just a simple AI here to chat while you play!";
+      }
+    }
+
+    sendBtn.addEventListener("click", () => {
+      const text = chatInput.value.trim();
+      if (text) {
+        addMessage("user", text);
+        chatInput.value = "";
+        setTimeout(() => {
+          const aiReply = fakeAIResponse(text);
+          addMessage("ai", aiReply);
+        }, 500);
+      }
+    });
+
+    chatInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendBtn.click();
+    });
+
+    // Initial render
+    renderHistory();
   </script>
 </body>
 </html>
