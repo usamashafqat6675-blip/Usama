@@ -1,0 +1,243 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Simple Snake Game</title>
+  <style>
+    :root{--bg:#0f172a;--panel:#0b1220;--accent:#10b981;--muted:#94a3b8}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#021024 0%, #021423 100%);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;color:#e6eef8}
+    .wrap{display:flex;gap:28px;align-items:flex-start}
+    .game{background:var(--panel);padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    canvas{display:block;background:linear-gradient(180deg,#071226,#03111b);border-radius:8px}
+    .ui{min-width:220px;padding:16px;background:rgba(255,255,255,0.02);border-radius:12px}
+    h1{font-size:16px;margin:0 0 12px 0}
+    .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .muted{color:var(--muted);font-size:13px}
+    button{background:var(--accent);border:0;padding:8px 12px;border-radius:8px;color:#042017;font-weight:600;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:inherit}
+    .big{font-size:20px;font-weight:700}
+    .small{font-size:13px}
+    .kbd{display:inline-block;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.03);font-family:monospace}
+    footer{margin-top:8px;color:var(--muted);font-size:13px}
+    footer a{color:var(--accent);text-decoration:none}
+    footer a:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="game">
+      <canvas id="board" width="400" height="400"></canvas>
+    </div><div class="ui">
+  <h1>Simple Snake</h1>
+  <div class="row"><div>Score</div><div id="score" class="big">0</div></div>
+  <div class="row"><div>Length</div><div id="length">3</div></div>
+  <div class="row"><div>Target (win)</div><div id="target">20</div></div>
+
+  <div class="row"><div>Speed</div>
+    <select id="speed">
+      <option value="140">Slow</option>
+      <option value="100">Normal</option>
+      <option value="70" selected>Fast</option>
+      <option value="40">Very Fast</option>
+    </select>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button id="start">Start / Restart</button>
+    <button id="pause" class="ghost">Pause</button>
+  </div>
+
+  <div style="margin-top:12px" class="muted">
+    Controls: <span class="kbd">↑ ↓ ← →</span> or <span class="kbd">W A S D</span>
+  </div>
+
+  <footer>
+    Win by reaching the target length. Lose by hitting walls or yourself.<br>
+    <a href="https://chatgpt.com/share/68ca4dd7-14f8-800a-80dd-78348a6416d3" target="_blank">View AI Chat History</a>
+  </footer>
+</div>
+
+  </div>  <script>
+    // Simple snake game (single-file). Grid-based logic.
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const lengthEl = document.getElementById('length');
+    const targetEl = document.getElementById('target');
+    const startBtn = document.getElementById('start');
+    const pauseBtn = document.getElementById('pause');
+    const speedSelect = document.getElementById('speed');
+
+    const TILE = 20; // size of each grid square in pixels
+    const COLS = canvas.width / TILE; // 20
+    const ROWS = canvas.height / TILE;
+
+    let snake; // array of {x,y}
+    let dir; // {x,y}
+    let pendingDir; // to prevent reversing
+    let food;
+    let intervalId = null;
+    let tickMS = parseInt(speedSelect.value,10);
+    const WIN_LENGTH = 20; // default, user-visible
+
+    // initialize elements
+    targetEl.textContent = WIN_LENGTH;
+
+    function rndPos(){
+      return {x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS)};
+    }
+
+    function posEqual(a,b){return a.x===b.x && a.y===b.y}
+
+    function placeFood(){
+      let p;
+      do{
+        p = rndPos();
+      } while(snake.some(s => posEqual(s,p)));
+      food = p;
+    }
+
+    function reset(){
+      snake = [ {x:8,y:10}, {x:7,y:10}, {x:6,y:10} ];
+      dir = {x:1,y:0};
+      pendingDir = null;
+      placeFood();
+      updateUi();
+      render();
+    }
+
+    function updateUi(){
+      scoreEl.textContent = (snake.length - 3) * 10; // simple score formula
+      lengthEl.textContent = snake.length;
+    }
+
+    function step(){
+      // apply pending direction (prevent 180-degree reversals)
+      if(pendingDir){
+        if(!(pendingDir.x === -dir.x && pendingDir.y === -dir.y)) dir = pendingDir;
+        pendingDir = null;
+      }
+
+      const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+
+      // lose: wall collision
+      if(head.x < 0 || head.y < 0 || head.x >= COLS || head.y >= ROWS){
+        return gameOver('You hit a wall — Game Over');
+      }
+
+      // lose: self collision
+      if(snake.some(s => posEqual(s, head))){
+        return gameOver('You ran into yourself — Game Over');
+      }
+
+      snake.unshift(head);
+
+      // eat food
+      if(posEqual(head, food)){
+        placeFood();
+      } else {
+        snake.pop(); // move: remove tail
+      }
+
+      updateUi();
+      render();
+
+      // win condition
+      if(snake.length >= WIN_LENGTH){
+        return gameWin('You win — target length reached!');
+      }
+    }
+
+    function render(){
+      // clear
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+
+      // draw grid subtle
+      ctx.save();
+      ctx.globalAlpha = 0.03;
+      for(let x=0;x<COLS;x++){
+        ctx.fillRect(x*TILE,0,1,canvas.height);
+      }
+      for(let y=0;y<ROWS;y++){
+        ctx.fillRect(0,y*TILE,canvas.width,1);
+      }
+      ctx.restore();
+
+      // draw food
+      drawRect(food.x, food.y, TILE, TILE, '#ef4444');
+
+      // draw snake
+      for(let i=0;i<snake.length;i++){
+        const s = snake[i];
+        const shade = i===0 ? '#10b981' : (i % 2 === 0 ? '#059669' : '#047857');
+        drawRect(s.x, s.y, TILE, TILE, shade);
+      }
+    }
+
+    function drawRect(gridX, gridY, w, h, color){
+      ctx.fillStyle = color;
+      ctx.fillRect(gridX * TILE + 1, gridY * TILE + 1, w - 2, h - 2);
+    }
+
+    function gameOver(msg){
+      stopLoop();
+      setTimeout(()=> alert(msg), 10);
+    }
+
+    function gameWin(msg){
+      stopLoop();
+      setTimeout(()=> alert(msg), 10);
+    }
+
+    function startLoop(){
+      stopLoop();
+      tickMS = parseInt(speedSelect.value,10);
+      intervalId = setInterval(step, tickMS);
+      pauseBtn.textContent = 'Pause';
+      pauseBtn.classList.remove('ghost');
+    }
+
+    function stopLoop(){
+      if(intervalId) clearInterval(intervalId);
+      intervalId = null;
+    }
+
+    // keyboard
+    window.addEventListener('keydown', e => {
+      const k = e.key;
+      if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d','W','A','S','D'].includes(k)){
+        e.preventDefault();
+        switch(k){
+          case 'ArrowUp': case 'w': case 'W': pendingDir = {x:0,y:-1}; break;
+          case 'ArrowDown': case 's': case 'S': pendingDir = {x:0,y:1}; break;
+          case 'ArrowLeft': case 'a': case 'A': pendingDir = {x:-1,y:0}; break;
+          case 'ArrowRight': case 'd': case 'D': pendingDir = {x:1,y:0}; break;
+        }
+      }
+
+      // space to pause
+      if(k === ' '){
+        togglePause();
+      }
+    });
+
+    function togglePause(){
+      if(intervalId) { stopLoop(); pauseBtn.textContent='Resume'; pauseBtn.classList.add('ghost'); }
+      else { startLoop(); }
+    }
+
+    // UI handlers
+    startBtn.addEventListener('click', ()=>{ reset(); startLoop(); });
+    pauseBtn.addEventListener('click', ()=>{ togglePause(); });
+    speedSelect.addEventListener('change', ()=>{
+      if(intervalId) startLoop(); // restart loop with new speed
+    });
+
+    // initial
+    reset();
+    // auto-start is intentionally off; user clicks Start or press any arrow key then Start
+  </script></body>
+</html>
