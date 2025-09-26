@@ -1,41 +1,489 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Usama's Website</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Usama — Portfolio (Games + AI Prompt)</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(to right, #74ebd5, #9face6);
-      text-align: center;
-      padding: 50px;
-      color: #333;
+    :root{
+      --bg1:#0f2027;--bg2:#203a43;--accent:#00ff99;--panel:rgba(255,255,255,0.03)
     }
-    .container {
-      background: #fff;
-      padding: 30px;
-      border-radius: 15px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      max-width: 500px;
-      margin: auto;
-    }
-    h1 {
-      color: #2c3e50;
-    }
-    p {
-      font-size: 18px;
-      line-height: 1.6;
-    }
+    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:#e6fff0}
+    header{padding:18px 22px;display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;gap:14px;align-items:center}
+    .brand h1{margin:0;font-size:20px;color:var(--accent)}
+    nav a{color:#e6fff0;text-decoration:none;margin-left:16px;font-weight:600;cursor:pointer}
+    nav a:hover{color:#c6ffd9}
+    main{max-width:1100px;margin:28px auto;padding:20px;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border-radius:12px;box-shadow:0 10px 40px rgba(2,6,23,0.6)}
+    section{display:none;padding:16px}
+    section.active{display:block}
+    .top-row{display:flex;gap:18px;align-items:center;justify-content:space-between}
+    .card{background:var(--panel);padding:16px;border-radius:12px;min-height:80px}
+    iframe{width:100%;height:520px;border-radius:10px;border:0}
+    .games{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+    .game-wrap{background:rgba(255,255,255,0.02);padding:14px;border-radius:10px;display:flex;flex-direction:column;align-items:center;min-width:420px}
+    canvas{background:#05060a;border-radius:8px;border:3px solid rgba(0,255,153,0.09);box-shadow:0 6px 24px rgba(0,255,153,0.06)}
+    .controls{margin-top:10px;color:#cfeee0;font-size:14px}
+    #modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);z-index:50}
+    .modal-content{background:#07121a;padding:22px;border-radius:10px;text-align:center;color:#e7fff5}
+    .btn{display:inline-block;padding:10px 14px;border-radius:8px;background:var(--accent);color:#002a1f;font-weight:700;border:none;cursor:pointer;margin-top:10px}
+    .small-muted{color:#9fd9bb;font-size:13px}
+    footer{margin-top:18px;text-align:center;color:#a8e9c6;font-size:13px}
+    .score-box{font-weight:700;color:var(--accent)}
+    .mult-badge{display:inline-block;background:#ffd166;color:#1b1b1b;padding:6px 10px;border-radius:8px;margin-top:6px;font-weight:700}
+    @media (max-width:980px){ .games{flex-direction:column;align-items:center} iframe{height:360px} }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Welcome to Usama's Website</h1>
-    <p><strong>Name:</strong> Usama</p>
-    <p><strong>From:</strong> Karachi, Pakistan</p>
-    <p><strong>Currently Studying at:</strong> Dong-A University</p>
-    <p><strong>Hobby:</strong> Swimming 🏊</p>
+  <header>
+    <div class="brand">
+      <h1>Usama — Portfolio</h1>
+      <div class="small-muted">Karachi, Pakistan · Dong-A University · Swimming 🏊</div>
+    </div>
+    <nav>
+      <a onclick="showSection('ai')">AI Prompt</a>
+      <a onclick="showSection('simple')">Simple Snake</a>
+      <a onclick="showSection('advanced')">Advanced Snake</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- AI prompt -->
+    <section id="ai" class="active">
+      <div class="top-row">
+        <div class="card" style="flex:1">
+          <h2 style="margin:0 0 8px 0">AI Prompt</h2>
+          <p class="small-muted" style="margin:0">Link to the published Google Doc prompt used to improve the games.</p>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <iframe src="https://docs.google.com/document/d/e/2PACX-1vTQwDFafHtdQajU5SuAwCrSHmnxB2DREMkxW5koxNwHjZf2zafbXVU8eNrX-QxpX9-bX0-OCv7DK-wa/pub" title="AI Prompt (Usama)"></iframe>
+      </div>
+    </section>
+
+    <!-- Simple Snake -->
+    <section id="simple">
+      <div class="top-row">
+        <div class="card" style="flex:1">
+          <h2 style="margin:0 0 6px 0">Simple Snake Game</h2>
+          <p class="small-muted" style="margin:0">Classic grid-based snake. Arrow keys to move. (Game runs when this tab is active.)</p>
+        </div>
+        <div class="card" style="width:220px;text-align:center">
+          <div id="simpleScore" class="score-box">Score: 0</div>
+          <div class="small-muted">Target: Grow & survive</div>
+        </div>
+      </div>
+
+      <div class="games">
+        <div class="game-wrap">
+          <canvas id="simpleCanvas" width="400" height="400" tabindex="0"></canvas>
+          <div class="controls">Controls: <strong>Arrow keys</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Advanced Snake -->
+    <section id="advanced">
+      <div class="top-row">
+        <div class="card" style="flex:1">
+          <h2 style="margin:0 0 6px 0">Advanced Snake Game</h2>
+          <p class="small-muted" style="margin:0">Improved visuals, obstacles, bonus food and pause (Press <strong>P</strong>).</p>
+        </div>
+        <div class="card" style="width:220px;text-align:center">
+          <div id="advScore" class="score-box">Score: 0</div>
+          <div id="multBadge" class="mult-badge" style="display:none">2× ACTIVE</div>
+        </div>
+      </div>
+
+      <div class="games">
+        <div class="game-wrap">
+          <canvas id="advCanvas" width="400" height="400" tabindex="0"></canvas>
+          <div class="controls">Controls: <strong>Arrow keys</strong> · Pause/Resume: <strong>P</strong></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal">
+    <div class="modal-content">
+      <h3 id="modalText">Game Over</h3>
+      <button class="btn" id="modalRestartBtn">Restart</button>
+    </div>
   </div>
+
+  <footer>
+    Built by Usama — © <span id="year"></span>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Section switching: starts/stops games accordingly
+    function showSection(id){
+      document.querySelectorAll('main section').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+
+      if(id === 'simple'){
+        startSimpleGame(); stopAdvancedGame();
+      } else if(id === 'advanced'){
+        startAdvancedGame(); stopSimpleGame();
+      } else {
+        stopSimpleGame(); stopAdvancedGame();
+      }
+    }
+
+    // ---------- Utilities ----------
+    const GRID = 20; // pixels per cell
+    function randInt(max){ return Math.floor(Math.random() * max); }
+    function isSame(a,b){ return a.x === b.x && a.y === b.y; }
+    function posOccupied(pos, arr){ return arr.some(p => isSame(p,pos)); }
+
+    // ================= SIMPLE SNAKE =================
+    const simpleCanvas = document.getElementById('simpleCanvas');
+    const sctx = simpleCanvas.getContext('2d');
+    let simpleInterval = null;
+    let simpleState = null;
+
+    function initSimpleState(){
+      simpleState = {
+        cols: simpleCanvas.width / GRID,
+        rows: simpleCanvas.height / GRID,
+        snake: [ {x:9,y:10}, {x:8,y:10}, {x:7,y:10} ],
+        dir: {x:1,y:0},
+        food: null,
+        score: 0,
+        running: true
+      };
+      placeSimpleFood();
+      updateSimpleScore();
+      drawSimple();
+    }
+
+    function placeSimpleFood(){
+      const s = simpleState;
+      let pos;
+      do {
+        pos = { x: randInt(s.cols), y: randInt(s.rows) };
+      } while (posOccupied(pos, s.snake));
+      s.food = pos;
+    }
+
+    function drawSimple(){
+      const s = simpleState;
+      sctx.clearRect(0,0,simpleCanvas.width,simpleCanvas.height);
+
+      // draw food
+      sctx.fillStyle = '#ef4444';
+      sctx.fillRect(s.food.x * GRID, s.food.y * GRID, GRID, GRID);
+
+      // draw snake
+      sctx.fillStyle = '#10b981';
+      s.snake.forEach(seg => sctx.fillRect(seg.x * GRID, seg.y * GRID, GRID-1, GRID-1));
+    }
+
+    function stepSimple(){
+      const s = simpleState;
+      if(!s || !s.running) return;
+
+      const head = { x: s.snake[0].x + s.dir.x, y: s.snake[0].y + s.dir.y };
+
+      // collisions
+      if(head.x < 0 || head.y < 0 || head.x >= s.cols || head.y >= s.rows || posOccupied(head, s.snake)){
+        s.running = false;
+        clearInterval(simpleInterval);
+        alert('Simple Snake — Game Over! Final Score: ' + s.score);
+        return;
+      }
+
+      s.snake.unshift(head);
+
+      if(isSame(head, s.food)){
+        s.score++;
+        placeSimpleFood();
+        updateSimpleScore();
+      } else {
+        s.snake.pop();
+      }
+
+      drawSimple();
+    }
+
+    function updateSimpleScore(){ document.getElementById('simpleScore').textContent = 'Score: ' + simpleState.score; }
+
+    // keyboard for simple (only when simple tab active)
+    function handleSimpleKey(e){
+      if(!document.getElementById('simple').classList.contains('active')) return;
+      const k = e.key;
+      const d = simpleState && simpleState.dir;
+      if(!d) return;
+      if((k === 'ArrowLeft' || k === 'a') && d.x !== 1) simpleState.dir = {x:-1,y:0};
+      if((k === 'ArrowRight' || k === 'd') && d.x !== -1) simpleState.dir = {x:1,y:0};
+      if((k === 'ArrowUp' || k === 'w') && d.y !== 1) simpleState.dir = {x:0,y:-1};
+      if((k === 'ArrowDown' || k === 's') && d.y !== -1) simpleState.dir = {x:0,y:1};
+    }
+
+    function startSimpleGame(){
+      if(simpleInterval) return;
+      initSimpleState();
+      simpleInterval = setInterval(stepSimple, 140);
+    }
+    function stopSimpleGame(){
+      if(simpleInterval){ clearInterval(simpleInterval); simpleInterval = null; }
+      simpleState = null;
+      sctx.clearRect(0,0,simpleCanvas.width,simpleCanvas.height);
+      document.getElementById('simpleScore').textContent = 'Score: 0';
+    }
+
+    // ================= ADVANCED SNAKE =================
+    const advCanvas = document.getElementById('advCanvas');
+    const actx = advCanvas.getContext('2d');
+    let advInterval = null;
+    let advState = null;
+
+    function initAdvState(){
+      advState = {
+        cols: advCanvas.width / GRID,
+        rows: advCanvas.height / GRID,
+        snake: [ {x:9,y:10}, {x:8,y:10}, {x:7,y:10} ],
+        dir: {x:1,y:0},
+        pendingDir: null,
+        food: null,
+        bonus: null,
+        obstacles: [],
+        score: 0,
+        running: true,
+        paused: false,
+        multiplier: false,
+        multiplierTimer: null
+      };
+      placeAdvFood();
+      updateAdvScore();
+      drawAdvanced(); // initial render
+    }
+
+    function placeAdvFood(){
+      const s = advState;
+      let p;
+      do {
+        p = { x: randInt(s.cols), y: randInt(s.rows) };
+      } while ( posOccupied(p, s.snake) || posOccupied(p, s.obstacles) );
+      s.food = p;
+    }
+
+    function placeAdvBonus(){
+      const s = advState;
+      let p;
+      let attempts = 0;
+      do {
+        p = { x: randInt(s.cols), y: randInt(s.rows) };
+        attempts++;
+        if(attempts > 200) break;
+      } while ( posOccupied(p, s.snake) || posOccupied(p, s.obstacles) || isSame(p, s.food) );
+      s.bonus = p;
+    }
+
+    function placeAdvObstacle(){
+      const s = advState;
+      let p;
+      let attempts = 0;
+      do {
+        p = { x: randInt(s.cols), y: randInt(s.rows) };
+        attempts++;
+        if(attempts > 200) return;
+      } while ( posOccupied(p, s.snake) || posOccupied(p, s.obstacles) || isSame(p, s.food) || (s.bonus && isSame(p, s.bonus)) );
+      s.obstacles.push(p);
+    }
+
+    function drawGrid(ctx){
+      // subtle grid
+      ctx.save();
+      ctx.globalAlpha = 0.04;
+      for(let x=0;x<advCanvas.width;x+=GRID) ctx.fillRect(x,0,1,advCanvas.height);
+      for(let y=0;y<advCanvas.height;y+=GRID) ctx.fillRect(0,y,advCanvas.width,1);
+      ctx.restore();
+    }
+
+    function drawAdvanced(){
+      if(!advState) return;
+      const s = advState;
+      if(s.paused) return; // don't update visuals while paused (but we still show current state)
+      actx.clearRect(0,0,advCanvas.width,advCanvas.height);
+
+      // subtle grid
+      actx.fillStyle = '#071018';
+      actx.fillRect(0,0,advCanvas.width,advCanvas.height);
+      drawGrid(actx);
+
+      // draw obstacles
+      actx.fillStyle = '#444a55';
+      s.obstacles.forEach(o => actx.fillRect(o.x*GRID, o.y*GRID, GRID-1, GRID-1));
+
+      // draw food
+      if(s.food){
+        actx.beginPath();
+        actx.fillStyle = '#ff4d4f';
+        actx.shadowBlur = 8; actx.shadowColor = '#ff4d4f';
+        actx.arc(s.food.x*GRID + GRID/2, s.food.y*GRID + GRID/2, GRID/2 - 2, 0, Math.PI*2);
+        actx.fill(); actx.shadowBlur = 0;
+      }
+
+      // draw bonus
+      if(s.bonus){
+        actx.beginPath();
+        actx.fillStyle = '#ffd166';
+        actx.shadowBlur = 16; actx.shadowColor = '#ffd166';
+        actx.arc(s.bonus.x*GRID + GRID/2, s.bonus.y*GRID + GRID/2, GRID/2 - 2, 0, Math.PI*2);
+        actx.fill(); actx.shadowBlur = 0;
+      }
+
+      // draw snake with gradient
+      for(let i=0;i<s.snake.length;i++){
+        const seg = s.snake[i];
+        const grad = actx.createLinearGradient(0,0,advCanvas.width,advCanvas.height);
+        grad.addColorStop(0,'#00ff99'); grad.addColorStop(1,'#00ccff');
+        actx.fillStyle = grad;
+        actx.fillRect(seg.x*GRID, seg.y*GRID, GRID-1, GRID-1);
+      }
+
+      // show paused overlay if paused
+      if(s.paused){
+        actx.fillStyle = 'rgba(0,0,0,0.4)';
+        actx.fillRect(0,0,advCanvas.width,advCanvas.height);
+        actx.fillStyle = '#fff';
+        actx.font = '20px Inter, Arial';
+        actx.textAlign = 'center';
+        actx.fillText('PAUSED', advCanvas.width/2, advCanvas.height/2);
+      }
+    }
+
+    function stepAdvanced(){
+      const s = advState;
+      if(!s || !s.running || s.paused) return;
+
+      // apply pending dir safely (prevent 180° turn)
+      if(s.pendingDir){
+        const pd = s.pendingDir;
+        if(!(pd.x === -s.dir.x && pd.y === -s.dir.y)){
+          s.dir = pd;
+        }
+        s.pendingDir = null;
+      }
+
+      const head = { x: s.snake[0].x + s.dir.x, y: s.snake[0].y + s.dir.y };
+
+      // collisions
+      const hitWall = head.x < 0 || head.y < 0 || head.x >= s.cols || head.y >= s.rows;
+      const hitSelf = posOccupied(head, s.snake);
+      const hitObstacle = posOccupied(head, s.obstacles);
+
+      if(hitWall || hitSelf || hitObstacle){
+        s.running = false;
+        stopAdvancedGame();
+        showModal('Game Over! Final Score: ' + s.score);
+        return;
+      }
+
+      s.snake.unshift(head);
+
+      // eat food
+      if(s.food && isSame(head, s.food)){
+        s.score += s.multiplier ? 2 : 1;
+        placeAdvFood();
+        // chance to spawn bonus
+        if(Math.random() < 0.20 && !s.bonus) placeAdvBonus();
+        // chance to spawn obstacle
+        if(Math.random() < 0.28) placeAdvObstacle();
+      }
+      // eat bonus
+      else if(s.bonus && isSame(head, s.bonus)){
+        s.score += 5;
+        s.bonus = null;
+        activateMultiplier();
+      } else {
+        s.snake.pop();
+      }
+
+      updateAdvScore();
+      drawAdvanced();
+    }
+
+    function updateAdvScore(){
+      document.getElementById('advScore').textContent = 'Score: ' + (advState ? advState.score : 0);
+    }
+
+    function activateMultiplier(){
+      const s = advState;
+      if(!s) return;
+      s.multiplier = true;
+      document.getElementById('multBadge').style.display = 'inline-block';
+      clearTimeout(s.multiplierTimer);
+      s.multiplierTimer = setTimeout(()=>{
+        s.multiplier = false;
+        document.getElementById('multBadge').style.display = 'none';
+      }, 5000);
+    }
+
+    // keyboard for advanced (queues pending direction)
+    function handleAdvKey(e){
+      if(!document.getElementById('advanced').classList.contains('active')) return;
+      if(!advState) return;
+      const k = e.key;
+      const s = advState;
+      const dir = s.dir;
+      if(k === 'ArrowLeft' || k === 'a'){ if(dir.x !== 1) s.pendingDir = {x:-1,y:0}; }
+      if(k === 'ArrowRight' || k === 'd'){ if(dir.x !== -1) s.pendingDir = {x:1,y:0}; }
+      if(k === 'ArrowUp' || k === 'w'){ if(dir.y !== 1) s.pendingDir = {x:0,y:-1}; }
+      if(k === 'ArrowDown' || k === 's'){ if(dir.y !== -1) s.pendingDir = {x:0,y:1}; }
+      if(k.toLowerCase() === 'p'){ if(s){ s.paused = !s.paused; drawAdvanced(); } }
+    }
+
+    function startAdvancedGame(){
+      if(advInterval) return;
+      initAdvState();
+      advInterval = setInterval(stepAdvanced, 140);
+    }
+    function stopAdvancedGame(){
+      if(advInterval){ clearInterval(advInterval); advInterval = null; }
+      // clear canvas and state to avoid leftover visuals when switching
+      actx.clearRect(0,0,advCanvas.width,advCanvas.height);
+      advState = null;
+      document.getElementById('advScore').textContent = 'Score: 0';
+      document.getElementById('multBadge').style.display = 'none';
+    }
+
+    // restart modal logic
+    const modalEl = document.getElementById('modal');
+    const modalText = document.getElementById('modalText');
+    const modalRestartBtn = document.getElementById('modalRestartBtn');
+    modalRestartBtn.addEventListener('click', () => {
+      modalEl.style.display = 'none';
+      if(document.getElementById('advanced').classList.contains('active')){
+        stopAdvancedGame(); startAdvancedGame();
+      } else if(document.getElementById('simple').classList.contains('active')){
+        stopSimpleGame(); startSimpleGame();
+      }
+    });
+
+    function showModal(txt){
+      modalText.textContent = txt;
+      modalEl.style.display = 'flex';
+    }
+
+    // global keyboard listeners delegate to active tab handlers
+    document.addEventListener('keydown', handleSimpleKey);
+    document.addEventListener('keydown', handleAdvKey);
+
+    // start state: show AI prompt, games inactive
+    stopSimpleGame();
+    stopAdvancedGame();
+
+    // allow clicking canvas to focus keyboard easily
+    simpleCanvas.addEventListener('click', ()=> simpleCanvas.focus());
+    advCanvas.addEventListener('click', ()=> advCanvas.focus());
+
+    // allow linking directly to a section via #hash
+    if(location.hash === '#advanced') showSection('advanced');
+    if(location.hash === '#simple') showSection('simple');
+  </script>
 </body>
 </html>
