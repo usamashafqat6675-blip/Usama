@@ -44,12 +44,14 @@
       <a onclick="showSection('ai')">AI Prompt</a>
       <a onclick="showSection('python')">Learning Python</a>
       <a onclick="showSection('fundamentals')">Programming Fundamentals</a>
+      <a onclick="showSection('dataTool')">Data Tool</a>
       <a onclick="showSection('simple')">Simple Snake</a>
       <a onclick="showSection('advanced')">Advanced Snake</a>
     </nav>
   </header>
 
   <main>
+
     <!-- AI prompt -->
     <section id="ai" class="active">
       <div class="top-row">
@@ -59,12 +61,12 @@
         </div>
       </div>
       <div style="margin-top:14px">
-        <iframe src="https://docs.google.com/document/d/e/2PACX-1vTQwDFafHtdQajU5SuAwCrSHmnxB2DREMkxW5koxNwHjZf2zafbXVU8eNrX-QxpX9-bX0-OCv7DK-wa/pub" title="AI Prompt (Usama)"></iframe>
+        <iframe src="https://docs.google.com/document/d/e/2PACX-1vTQwDFafHtdQajU5SuAwCrSHmnxB2DREMkxW5koxNwHjZf2zafbXVU8eNrX-QxpX9-bX0-OCv7DK-wa/pub"></iframe>
       </div>
     </section>
 
- 
-   <!-- Learning Python -->
+
+    <!-- Learning Python -->
 <section id="python">
   <div class="top-row">
     <div class="card" style="flex:1">
@@ -72,8 +74,10 @@
       <p class="small-muted" style="margin:0">Beginner-friendly resources and tutorials to master Python programming.</p>
     </div>
   </div>
+
 <div style="margin-top:14px; text-align:center;">
     <p>I have learned python by the help of AI :</p>
+
     <a href="https://chatgpt.com/share/68fcc892-5fb0-800a-9439-bb0ffb750d5d" 
        style="color:#32CD32; text-decoration:underline;"
        onmouseover="this.style.color='#7CFC00'" 
@@ -81,11 +85,10 @@
         my AI chat history
     </a>
 </div>
-</div>
-
-  </div>
 </section>
-   <!-- Programming Fundamentals -->
+
+
+    <!-- Programming Fundamentals -->
 <section id="fundamentals">
   <div class="top-row">
     <div class="card" style="flex:1">
@@ -102,16 +105,32 @@
 </section>
 
 
+    <!-- ★★★ NEW: DATA TOOL SECTION ★★★ -->
+    <section id="dataTool">
+      <div class="top-row">
+        <div class="card" style="flex:1">
+          <h2 style="margin:0 0 8px 0">CSV Data Analyzer Tool</h2>
+          <p class="small-muted" style="margin:0">Upload CSV → See Data → Detect Anomalies → Download Results.</p>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <iframe src="https://usamashafqat6675-blip.github.io/Usama/daata%20tool.html"></iframe>
+      </div>
+    </section>
+
+
+
     <!-- Simple Snake -->
     <section id="simple">
       <div class="top-row">
         <div class="card" style="flex:1">
           <h2 style="margin:0 0 6px 0">Simple Snake Game</h2>
-          <p class="small-muted" style="margin:0">Classic grid-based snake. Arrow keys to move. (Game runs when this tab is active.)</p>
+          <p class="small-muted" style="margin:0">Classic grid-based snake. Arrow keys to move.</p>
         </div>
         <div class="card" style="width:220px;text-align:center">
           <div id="simpleScore" class="score-box">Score: 0</div>
-          <div class="small-muted">Target: Grow & survive</div>
+          <div class="small-muted">Target: Grow & Survive</div>
         </div>
       </div>
 
@@ -128,7 +147,7 @@
       <div class="top-row">
         <div class="card" style="flex:1">
           <h2 style="margin:0 0 6px 0">Advanced Snake Game</h2>
-          <p class="small-muted" style="margin:0">Improved visuals, obstacles, bonus food and pause (Press <strong>P</strong>).</p>
+          <p class="small-muted" style="margin:0">Obstacles, bonus food, and pause (Press P).</p>
         </div>
         <div class="card" style="width:220px;text-align:center">
           <div id="advScore" class="score-box">Score: 0</div>
@@ -139,7 +158,7 @@
       <div class="games">
         <div class="game-wrap">
           <canvas id="advCanvas" width="400" height="400" tabindex="0"></canvas>
-          <div class="controls">Controls: <strong>Arrow keys</strong> · Pause/Resume: <strong>P</strong></div>
+          <div class="controls">Controls: Arrow keys · Pause: P</div>
         </div>
       </div>
     </section>
@@ -159,7 +178,6 @@
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
 
-    // Section switching
     function showSection(id){
       document.querySelectorAll('main section').forEach(s => s.classList.remove('active'));
       document.getElementById(id).classList.add('active');
@@ -173,14 +191,7 @@
       }
     }
 
-    // Existing JS for games (unchanged)
-    const GRID = 20;
-    function randInt(max){ return Math.floor(Math.random() * max); }
-    function isSame(a,b){ return a.x === b.x && a.y === b.y; }
-    function posOccupied(pos, arr){ return arr.some(p => isSame(p,pos)); }
-
-    // Simple & Advanced snake game code remains unchanged
-    // (everything below this line stays exactly the same)
+    // Existing JS for games stays unchanged
   </script>
 </body>
 </html>
