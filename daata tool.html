@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CSV Analyzer — Single File (GitHub Pages friendly)</title>
+
+  <!-- PapaParse (CSV parsing) and Chart.js (visuals) from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b57a4;           /* blue background */
+      --panel:#e9f5ff;        /* light panel for readability */
+      --accent:#025aa5;
+      --good:#2fa84f;         /* green for normal */
+      --bad:#ff3b30;          /* red for anomalies */
+      --muted:#5b6b7a;
+      --glass: rgba(255,255,255,0.08);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    html,body { height:100%; margin:0; background:linear-gradient(180deg,var(--bg),#0a4a88); color:#02324d; }
+    .app {
+      max-width:1200px; margin:24px auto; padding:20px; border-radius:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    header { display:flex; gap:16px; align-items:center; }
+    header h1 { margin:0; color:white; font-size:20px; letter-spacing:0.2px; }
+    .controls { display:flex; gap:10px; align-items:center; margin-top:12px; flex-wrap:wrap; }
+    .card { background:var(--panel); padding:12px; border-radius:10px; min-width:160px; }
+    input[type=file]{ display:inline-block; }
+    button { cursor:pointer; border:0; padding:8px 12px; border-radius:8px; background:var(--accent); color:white; }
+    .flex { display:flex; gap:12px; }
+    .col { display:flex; flex-direction:column; gap:8px; }
+    .stats-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:12px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; background:white; border-radius:8px; overflow:hidden; }
+    th, td { padding:8px 6px; border-bottom:1px solid rgba(0,0,0,0.06); text-align:left; }
+    thead th { position:sticky; top:0; background: linear-gradient(90deg,#f7fbff,#eef8ff); z-index:3; }
+    .cell-anom { background: linear-gradient(90deg, rgba(255,59,48,0.12), rgba(255,59,48,0.06)); color:var(--bad); font-weight:600; }
+    .cell-good { background: linear-gradient(90deg, rgba(47,168,79,0.07), rgba(47,168,79,0.02)); color:var(--good); }
+    .tiny { font-size:12px; color:var(--muted); }
+    .filters { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .filter-row { display:flex; gap:6px; align-items:center; }
+    .filter-row select, .filter-row input { padding:6px 8px; border-radius:6px; border:1px solid rgba(0,0,0,0.08); }
+    .chart-wrap { margin-top:12px; display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+    .chart-card { background:var(--panel); padding:12px; border-radius:10px; width:100%; max-width:720px; }
+    .settings { display:flex; gap:8px; align-items:center; }
+    .badge { padding:6px 10px; background:rgba(255,255,255,0.06); border-radius:999px; color:white; font-size:12px; }
+    .legend { display:flex; gap:8px; align-items:center; }
+    .legend .dot { width:12px; height:12px; border-radius:3px; display:inline-block; margin-right:6px; }
+    footer { margin-top:18px; color:rgba(255,255,255,0.8); font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+    .download { text-decoration:none; color:white; }
+    .small-muted { font-size:12px; color:var(--muted); }
+
+    /* responsive table container */
+    .table-container { max-height:400px; overflow:auto; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.12); }
+
+    /* pagination */
+    .pager { display:flex; gap:6px; align-items:center; margin-top:8px; }
+    .pager button { background:#fff; border:1px solid rgba(0,0,0,0.06); color:#02324d; padding:6px 8px; border-radius:6px; }
+
+    /* tiny helper */
+    label.small { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
+
+    /* tooltip helper for data cells */
+    td[data-tooltip] { position:relative; cursor:help; }
+    td[data-tooltip]:hover::after{
+      content: attr(data-tooltip);
+      position: absolute; left:0; top:calc(100% + 6px); z-index:20;
+      background:#02324d; color:white; padding:6px 8px; border-radius:6px; white-space:nowrap; font-size:12px;
+      box-shadow:0 6px 18px rgba(0,0,0,0.36);
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="CSV Analyzer">
+    <header>
+      <div>
+        <h1>CSV Analyzer — Single File (GitHub Pages Ready)</h1>
+        <div class="tiny">Upload any CSV. Numeric columns auto-detected. Anomalies highlighted in <span style="color:var(--bad);">red</span>, normal in <span style="color:var(--good);">green</span>.</div>
+      </div>
+      <div style="margin-left:auto" class="legend">
+        <div class="tiny">Legend:</div>
+        <div><span class="dot" style="background:var(--bad)"></span><span class="tiny">Anomaly</span></div>
+        <div><span class="dot" style="background:var(--good)"></span><span class="tiny">Normal</span></div>
+      </div>
+    </header>
+
+    <div class="controls" style="margin-top:14px;">
+      <div class="card">
+        <label class="small">Choose CSV file</label>
+        <input type="file" id="file-input" accept=".csv,text/csv" />
+        <div style="margin-top:8px;" class="small-muted">Supports headers. First row is treated as column names.</div>
+      </div>
+
+      <div class="card">
+        <label class="small">Anomaly detection</label>
+        <div class="settings">
+          <label class="small tiny">Std threshold (k): <strong id="kVal">2</strong></label>
+          <input id="kRange" type="range" min="0.5" max="5" step="0.1" value="2" />
+        </div>
+        <div class="settings" style="margin-top:6px;">
+          <label class="small tiny">Z-score threshold: <strong id="zVal">2</strong></label>
+          <input id="zRange" type="range" min="0.5" max="6" step="0.1" value="2" />
+        </div>
+        <div style="margin-top:8px;">
+          <button id="recalc">Recompute Anomalies</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <label class="small">Quick actions</label>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button id="download-processed">Download processed CSV</button>
+          <button id="clear">Clear</button>
+        </div>
+        <div class="tiny" style="margin-top:8px;">Processed CSV includes anomaly flags.</div>
+      </div>
+    </div>
+
+    <div id="statsArea" class="stats-grid" aria-live="polite"></div>
+
+    <div style="margin-top:12px;" class="card">
+      <label class="small">Column filters (builds after load)</label>
+      <div id="filters" class="filters"></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-card">
+        <label class="small">Visualize</label>
+        <div style="display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+          <select id="chartType">
+            <option value="hist">Histogram (single numeric)</option>
+            <option value="scatter">Scatter (x & y numeric)</option>
+            <option value="barcat">Bar (categorical counts)</option>
+          </select>
+          <select id="chartColX"></select>
+          <select id="chartColY"></select>
+          <select id="chartBins" title="Histogram bins"><option>10</option><option>20</option><option>30</option></select>
+          <button id="drawChart">Draw</button>
+          <div style="margin-left:auto" class="tiny">Mouseover for tips.</div>
+        </div>
+        <canvas id="theChart" style="margin-top:10px; max-height:400px;"></canvas>
+      </div>
+
+      <div class="card" style="min-width:260px;">
+        <label class="small">Controls & Info</label>
+        <div style="margin-top:8px;" id="summaryText" class="tiny">Load a CSV to see column summaries and choose visuals.</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <label class="small">Data table (filtered view)</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input id="globalSearch" placeholder="Global search..." style="padding:6px; border-radius:6px; border:1px solid rgba(0,0,0,0.06)" />
+          <div class="tiny">Rows: <span id="rowCount">0</span></div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table id="dataTable" role="grid" aria-readonly="true">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <button id="prevPage">&lt; Prev</button>
+        <div class="tiny">Page <span id="pageNum">1</span> / <span id="pageTotal">1</span></div>
+        <button id="nextPage">Next &gt;</button>
+        <div style="margin-left:auto" class="tiny">Page size: 
+          <select id="pageSize">
+            <option>10</option><option selected>25</option><option>500</option><option>1000</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="small-muted">Tip: use the K and Z sliders to tune anomaly sensitivity. Red = flagged by either method.</div>
+      <div><span class="badge">Made for learning</span></div>
+    </footer>
+  </div>
+
+<script>
+/* CSV Analyzer single-file app
+   Features:
+   - Parse CSV with PapaParse
+   - Detect numeric columns
+   - Compute count, mean, median, min, max, std
+   - Mark anomalies by std-threshold (k * std) and z-score threshold
+   - Filters per column
+   - Charts using Chart.js (histogram, scatter, bar)
+   - Download processed CSV
+*/
+
+// -- Utilities (careful arithmetic)
+function mean(arr){
+  if(!arr.length) return NaN;
+  let s=0, n=0;
+  for(let v of arr){ if(!Number.isFinite(v)) continue; s+=v; n++; }
+  return n ? s/n : NaN;
+}
+function median(arr){
+  const a = arr.filter(v=>Number.isFinite(v)).slice().sort((x,y)=>x-y);
+  const n=a.length;
+  if(n===0) return NaN;
+  const mid = Math.floor(n/2);
+  return (n%2)? a[mid] : (a[mid-1]+a[mid])/2;
+}
+function variance(arr){
+  const m=mean(arr);
+  if(!Number.isFinite(m)) return NaN;
+  let s=0, n=0;
+  for(let v of arr){ if(!Number.isFinite(v)) continue; s += (v-m)*(v-m); n++; }
+  return n>0 ? s/n : NaN;
+}
+function stddev(arr){
+  const v=variance(arr);
+  return Number.isFinite(v) ? Math.sqrt(v) : NaN;
+}
+function isNumericString(s){
+  if(s===null||s===undefined) return false;
+  const t = (''+s).trim();
+  if(t==='') return false;
+  return !Number.isNaN(Number(t));
+}
+function csvEscape(v){
+  if(v==null) return '';
+  const s = String(v);
+  if(s.includes(',')||s.includes('"')||s.includes('\n')) return '"' + s.replace(/"/g,'""') + '"';
+  return s;
+}
+
+// -- App state
+let rawRows = [];     // array of objects
+let headers = [];
+let numericCols = []; // names
+let stats = {};       // per-col stats
+let anomalies = {};   // anomalies[rowIndex] = {colName: {byStd:true, byZ:true}}
+let filteredIndexes = []; // indexes of rawRows currently visible
+let page = 1;
+let pageSize = 25;
+let chartInstance = null;
+
+// elements
+const fileInput = document.getElementById('file-input');
+const statsArea = document.getElementById('statsArea');
+const filtersDiv = document.getElementById('filters');
+const tableHead = document.getElementById('tableHead');
+const tableBody = document.getElementById('tableBody');
+const rowCountSpan = document.getElementById('rowCount');
+const kRange = document.getElementById('kRange');
+const zRange = document.getElementById('zRange');
+const kValLabel = document.getElementById('kVal');
+const zValLabel = document.getElementById('zVal');
+const recalcBtn = document.getElementById('recalc');
+const downloadBtn = document.getElementById('download-processed');
+const clearBtn = document.getElementById('clear');
+const globalSearch = document.getElementById('globalSearch');
+const pageNumSpan = document.getElementById('pageNum');
+const pageTotalSpan = document.getElementById('pageTotal');
+const prevPageBtn = document.getElementById('prevPage');
+const nextPageBtn = document.getElementById('nextPage');
+const pageSizeSelect = document.getElementById('pageSize');
+const chartType = document.getElementById('chartType');
+const chartColX = document.getElementById('chartColX');
+const chartColY = document.getElementById('chartColY');
+const chartBins = document.getElementById('chartBins');
+const drawChartBtn = document.getElementById('drawChart');
+const summaryText = document.getElementById('summaryText');
+
+// event hookups
+fileInput.addEventListener('change', handleFile);
+kRange.addEventListener('input', ()=>{ kValLabel.textContent = kRange.value; });
+zRange.addEventListener('input', ()=>{ zValLabel.textContent = zRange.value; });
+recalcBtn.addEventListener('click', ()=>{ computeStatsAndAnomalies(); buildTable(); });
+downloadBtn.addEventListener('click', downloadProcessedCSV);
+clearBtn.addEventListener('click', clearAll);
+globalSearch.addEventListener('input', ()=>{ buildFilteredIndex(); buildTable(); });
+pageSizeSelect.addEventListener('change', ()=>{ pageSize = Number(pageSizeSelect.value); page=1; buildTable(); });
+prevPageBtn.addEventListener('click', ()=>{ if(page>1){ page--; buildTable(); }});
+nextPageBtn.addEventListener('click', ()=>{ if(page < Math.ceil(filteredIndexes.length / pageSize)){ page++; buildTable(); }});
+
+drawChartBtn.addEventListener('click', drawChart);
+
+// -- File load
+function handleFile(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  Papa.parse(f, {
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: false, // we'll parse ourselves
+    complete: function(results){
+      headers = results.meta.fields || [];
+      rawRows = results.data.map(r => {
+        // keep raw strings as-is
+        return r;
+      });
+      page = 1;
+      detectNumericColumns();
+      computeStatsAndAnomalies();
+      buildFilters();
+      populateChartSelectors();
+      buildStatsUI();
+      buildFilteredIndex();
+      buildTable();
+      summaryText.textContent = `Loaded ${rawRows.length} rows, ${headers.length} columns. Numeric columns: ${numericCols.join(', ') || 'none'}.`;
+    },
+    error: function(err){
+      alert('Error parsing CSV: '+err);
+    }
+  });
+}
+
+// detect numeric columns by sampling values (if >50% numeric in column)
+function detectNumericColumns(){
+  numericCols = [];
+  for(let h of headers){
+    let num = 0, tot=0;
+    for(let r of rawRows){
+      const v = r[h];
+      if(v===undefined || v===null || (''+v).trim()==='') { tot++; continue;}
+      tot++;
+      if(isNumericString(v)) num++;
+    }
+    // require at least 40% numeric and >=3 numeric samples to treat numeric
+    if(tot>0 && num/tot >= 0.4 && num >= 3) numericCols.push(h);
+  }
+}
+
+// compute stats per numeric column and mark anomalies
+function computeStatsAndAnomalies(){
+  stats = {}; anomalies = {}; // reset
+  // gather numeric arrays
+  for(let col of numericCols){
+    const vals = rawRows.map((r, idx)=> {
+      const v = r[col];
+      const n = Number((''+v).replace(/,/g,'')); // tolerate commas
+      return Number.isFinite(n) ? n : NaN;
+    }).filter(v=>Number.isFinite(v));
+    stats[col] = {
+      count: vals.length,
+      mean: Number.isFinite(mean(vals)) ? +mean(vals).toFixed(6) : NaN,
+      median: Number.isFinite(median(vals)) ? +median(vals).toFixed(6) : NaN,
+      min: vals.length ? Math.min(...vals) : NaN,
+      max: vals.length ? Math.max(...vals) : NaN,
+      std: Number.isFinite(stddev(vals)) ? +stddev(vals).toFixed(6) : NaN
+    };
+  }
+
+  // anomaly detection thresholds
+  const k = Number(kRange.value) || 2;
+  const zThreshold = Number(zRange.value) || 2;
+
+  // compute per-row anomalies
+  for(let i=0;i<rawRows.length;i++){
+    anomalies[i] = {};
+    for(let col of numericCols){
+      const raw = rawRows[i][col];
+      const v = Number((''+raw).replace(/,/g,''));
+      if(!Number.isFinite(v)) continue;
+      const s = stats[col];
+      if(!s || !Number.isFinite(s.std) || s.std === 0) continue;
+      const z = (v - s.mean) / s.std;
+      const byStd = Math.abs(v - s.mean) > k * s.std;
+      const byZ = Math.abs(z) > zThreshold;
+      if(byStd || byZ){
+        anomalies[i][col] = { byStd, byZ, z: +z.toFixed(3), val: v };
+      }
+    }
+    if(Object.keys(anomalies[i]).length === 0) delete anomalies[i];
+  }
+}
+
+// build stats UI
+function buildStatsUI(){
+  statsArea.innerHTML = '';
+  if(!headers.length){ statsArea.textContent = 'No data yet.'; return; }
+  for(let h of headers){
+    const isNum = numericCols.includes(h);
+    const card = document.createElement('div');
+    card.className = 'card';
+    let inner = `<div style="display:flex;justify-content:space-between;align-items:center">
+                  <strong>${h}</strong>
+                  <div class="tiny">${isNum?'numeric':'text'}</div>
+                 </div>`;
+    if(isNum){
+      const s = stats[h];
+      inner += `<div class="tiny" style="margin-top:6px;">
+                Count: ${s.count} • Mean: ${Number.isFinite(s.mean)?s.mean:''} • Median: ${Number.isFinite(s.median)?s.median:''}<br>
+                Min: ${Number.isFinite(s.min)?s.min:''} • Max: ${Number.isFinite(s.max)?s.max:''} • Std: ${Number.isFinite(s.std)?s.std:''}
+               </div>`;
+    } else {
+      // show top 5 categories
+      const freq = {};
+      for(let r of rawRows){ const v = (r[h]||'').toString(); if(v) freq[v] = (freq[v]||0)+1; }
+      const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(x=>`${x[0]} (${x[1]})`).join(', ');
+      inner += `<div class="tiny" style="margin-top:6px;">Top values: ${top || '—'}</div>`;
+    }
+    card.innerHTML = inner;
+    statsArea.appendChild(card);
+  }
+}
+
+// build filters UI
+function buildFilters(){
+  filtersDiv.innerHTML = '';
+  for(let h of headers){
+    const f = document.createElement('div');
+    f.className = 'filter-row';
+    f.style.minWidth='200px';
+    const op = document.createElement('select');
+    op.innerHTML = `<option value="contains">contains</option>
+                    <option value="=">=</option>
+                    <option value="!=">!=</option>
+                    <option value=">">></option>
+                    <option value="<"><</option>
+                    <option value=">=">>=</option>
+                    <option value="<="><=</option>`;
+    const inp = document.createElement('input');
+    inp.placeholder = h;
+    inp.dataset.col = h;
+    op.dataset.col = h;
+    // apply filter on input change
+    inp.addEventListener('input', ()=>{ page=1; buildFilteredIndex(); buildTable(); });
+    op.addEventListener('change', ()=>{ page=1; buildFilteredIndex(); buildTable(); });
+    f.appendChild(op);
+    f.appendChild(inp);
+    filtersDiv.appendChild(f);
+  }
+}
+
+// build filtered index based on filters and global search
+function buildFilteredIndex(){
+  // get active filters
+  const filters = [];
+  for(const node of filtersDiv.querySelectorAll('input')){
+    const val = node.value.trim();
+    const col = node.dataset.col;
+    if(val !== ''){
+      const op = node.previousElementSibling.value;
+      filters.push({col, op, val});
+    }
+  }
+  const g = globalSearch.value.trim().toLowerCase();
+
+  filteredIndexes = [];
+  for(let i=0;i<rawRows.length;i++){
+    const row = rawRows[i];
+    let ok = true;
+    // filters
+    for(let f of filters){
+      const cell = (row[f.col]||'').toString();
+      if(f.op === 'contains' && !cell.toLowerCase().includes(f.val.toLowerCase())) { ok=false; break; }
+      if(f.op === '=' && !(cell === f.val)) { ok=false; break; }
+      if(f.op === '!=' && (cell === f.val)) { ok=false; break; }
+      if(['>','<','>=','<='].includes(f.op)){
+        const a = Number((''+cell).replace(/,/g,'')), b = Number((''+f.val).replace(/,/g,''));
+        if(!Number.isFinite(a) || !Number.isFinite(b)) { ok=false; break; }
+        if(f.op === '>' && !(a>b)) { ok=false; break; }
+        if(f.op === '<' && !(a<b)) { ok=false; break; }
+        if(f.op === '>=' && !(a>=b)) { ok=false; break; }
+        if(f.op === '<=' && !(a<=b)) { ok=false; break; }
+      }
+    }
+    if(!ok) continue;
+    if(g){
+      // global search any column
+      let found=false;
+      for(let h of headers){ if((row[h]||'').toString().toLowerCase().includes(g)){ found=true; break; } }
+      if(!found) continue;
+    }
+    filteredIndexes.push(i);
+  }
+  rowCountSpan.textContent = filteredIndexes.length;
+  pageTotalSpan.textContent = Math.max(1, Math.ceil(filteredIndexes.length / pageSize));
+  if(page > Math.ceil(filteredIndexes.length / pageSize)) page = Math.max(1, Math.ceil(filteredIndexes.length / pageSize));
+  pageNumSpan.textContent = page;
+}
+
+// build table (paged)
+function buildTable(){
+  // headers
+  tableHead.innerHTML = '';
+  const trHead = document.createElement('tr');
+  for(let h of headers){
+    const th = document.createElement('th');
+    th.textContent = h;
+    trHead.appendChild(th);
+  }
+  // extra column for anomaly summary
+  const thx = document.createElement('th'); thx.textContent = 'Anomaly Info'; trHead.appendChild(thx);
+  tableHead.appendChild(trHead);
+
+  // body
+  tableBody.innerHTML = '';
+  const start = (page-1) * pageSize;
+  const end = Math.min(filteredIndexes.length, start + pageSize);
+  for(let p = start; p < end; p++){
+    const idx = filteredIndexes[p];
+    const row = rawRows[idx];
+    const tr = document.createElement('tr');
+    for(let h of headers){
+      const td = document.createElement('td');
+      const cellVal = row[h];
+      td.textContent = cellVal;
+      // tooltip for raw value
+      td.setAttribute('data-tooltip', `${h}: ${cellVal}`);
+      // style numeric anomaly or normal
+      if(numericCols.includes(h)){
+        const val = Number((''+cellVal).replace(/,/g,''));
+        if(Number.isFinite(val) && anomalies[idx] && anomalies[idx][h]){
+          td.classList.add('cell-anom');
+          td.title = `Anomaly: z=${anomalies[idx][h].z} • byStd:${anomalies[idx][h].byStd} • byZ:${anomalies[idx][h].byZ}`;
+        } else if(Number.isFinite(val)){
+          td.classList.add('cell-good');
+          td.title = `Numeric normal`;
+        }
+      }
+      tr.appendChild(td);
+    }
+    // anomaly summary cell
+    const sumtd = document.createElement('td');
+    if(anomalies[idx]){
+      const keys = Object.keys(anomalies[idx]);
+      sumtd.innerHTML = keys.map(k=> `<div style="margin-bottom:4px"><strong>${k}</strong>: z=${anomalies[idx][k].z} ${anomalies[idx][k].byStd?'<span style="color:var(--bad)">[std]</span>':''}${anomalies[idx][k].byZ?'<span style="color:var(--bad)">[z]</span>':''}</div>`).join('');
+      sumtd.style.minWidth='160px';
+    } else {
+      sumtd.textContent = '—';
+    }
+    tr.appendChild(sumtd);
+    tableBody.appendChild(tr);
+  }
+  pageNumSpan.textContent = page;
+  pageTotalSpan.textContent = Math.max(1, Math.ceil(filteredIndexes.length / pageSize));
+}
+
+// populate chart selectors
+function populateChartSelectors(){
+  chartColX.innerHTML = ''; chartColY.innerHTML = '';
+  for(let h of headers){
+    const o1 = document.createElement('option'); o1.value = h; o1.textContent = h;
+    const o2 = document.createElement('option'); o2.value = h; o2.textContent = h;
+    chartColX.appendChild(o1); chartColY.appendChild(o2);
+  }
+}
+
+// draw charts
+function drawChart(){
+  const type = chartType.value;
+  const xcol = chartColX.value;
+  const ycol = chartColY.value;
+  const bins = Number(chartBins.value) || 10;
+
+  // collect filtered rows only for charting
+  const indexes = filteredIndexes.length ? filteredIndexes : rawRows.map((_,i)=>i);
+
+  if(type === 'hist'){
+    // single numeric: histogram
+    if(!numericCols.includes(xcol)){
+      alert('For histogram select a numeric column as column X.');
+      return;
+    }
+    const values = indexes.map(i => Number((''+rawRows[i][xcol]).replace(/,/g,''))).filter(Number.isFinite);
+    if(values.length === 0){ alert('No numeric values for selected column.'); return; }
+    // compute bins
+    const min = Math.min(...values), max = Math.max(...values);
+    const width = (max - min) / bins || 1;
+    const counts = new Array(bins).fill(0), labels = [];
+    for(let v of values){
+      let bin = Math.floor((v - min) / width);
+      if(bin < 0) bin = 0;
+      if(bin >= bins) bin = bins-1;
+      counts[bin]++;
+    }
+    for(let b=0;b<bins;b++){
+      const a = (min + b*width), bb = (min + (b+1)*width);
+      labels.push(`${a.toFixed(2)} — ${bb.toFixed(2)}`);
+    }
+    const ctx = document.getElementById('theChart').getContext('2d');
+    if(chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: `${xcol} (histogram)`, data: counts, borderRadius:6 }] },
+      options: {
+        plugins: { tooltip: { callbacks: { label: ctx=> `Count: ${ctx.raw}` } } },
+        responsive:true, maintainAspectRatio:false
+      }
+    });
+  } else if(type === 'scatter'){
+    if(!numericCols.includes(xcol) || !numericCols.includes(ycol)){
+      alert('Select numeric columns for X and Y for scatter.');
+      return;
+    }
+    const pts = [];
+    for(let i of indexes){
+      const xv = Number((''+rawRows[i][xcol]).replace(/,/g,'')), yv = Number((''+rawRows[i][ycol]).replace(/,/g,''));
+      if(Number.isFinite(xv) && Number.isFinite(yv)){
+        const an = anomalies[i] && (anomalies[i][xcol] || anomalies[i][ycol]);
+        pts.push({ x: xv, y: yv, r: (an ? 6 : 4), bg: an? 'rgba(255,59,48,0.9)' : 'rgba(47,168,79,0.9)'});
+      }
+    }
+    const ctx = document.getElementById('theChart').getContext('2d');
+    if(chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type: 'scatter',
+      data: { datasets: [{ label: `${ycol} vs ${xcol}`, data: pts, pointRadius: 5, showLine:false }] },
+      options: {
+        plugins: { tooltip: { callbacks: { label: ctx => `${xcol}: ${ctx.raw.x}, ${ycol}: ${ctx.raw.y}` } } },
+        scales: { x: { title:{display:true,text:xcol} }, y: { title:{display:true,text:ycol} } },
+        responsive:true, maintainAspectRatio:false
+      }
+    });
+  } else if(type === 'barcat'){
+    // categorical counts for selected xcol (xcol can be any)
+    const freq = {};
+    for(let i of indexes){
+      const k = (rawRows[i][xcol]||'').toString(); if(k==='') continue;
+      freq[k] = (freq[k]||0)+1;
+    }
+    const items = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,50);
+    const labels = items.map(x=>x[0]), counts = items.map(x=>x[1]);
+    const ctx = document.getElementById('theChart').getContext('2d');
+    if(chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: `Counts of ${xcol}`, data: counts, borderRadius:4 }] },
+      options: { indexAxis: 'y', responsive:true, maintainAspectRatio:false }
+    });
+  }
+}
+
+// download processed CSV
+function downloadProcessedCSV(){
+  if(!rawRows.length){ alert('No data'); return; }
+  // augment rows with anomaly summary columns
+  const lines = [];
+  const hdr = headers.concat(['_anomaly_flag','_anomaly_detail']).map(csvEscape).join(',');
+  lines.push(hdr);
+  for(let i=0;i<rawRows.length;i++){
+    const r = rawRows[i];
+    const rowVals = headers.map(h => csvEscape(r[h]));
+    const an = anomalies[i] ? 1 : 0;
+    const detail = anomalies[i] ? Object.entries(anomalies[i]).map(([c,v])=>`${c}:z=${v.z}${v.byStd?'[std]':''}${v.byZ?'[z]':''}`).join('|') : '';
+    rowVals.push(an, csvEscape(detail));
+    lines.push(rowVals.join(','));
+  }
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'processed.csv'; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// clear
+function clearAll(){
+  rawRows = []; headers = []; numericCols=[]; stats={}; anomalies={}; filteredIndexes=[]; page=1;
+  statsArea.innerHTML=''; filtersDiv.innerHTML=''; tableHead.innerHTML=''; tableBody.innerHTML='';
+  rowCountSpan.textContent='0'; summaryText.textContent='Cleared.';
+  if(chartInstance) chartInstance.destroy();
+  fileInput.value = '';
+}
+
+// initial states
+pageSize = Number(pageSizeSelect.value);
+kValLabel.textContent = kRange.value;
+zValLabel.textContent = zRange.value;
+
+// keyboard: quick recompute on Enter in global search
+globalSearch.addEventListener('keyup', (e)=>{ if(e.key==='Enter'){ buildFilteredIndex(); buildTable(); } });
+
+// ensure there is at least minimal help on first load
+summaryText.textContent = 'Choose a CSV file to begin.';
+
+</script>
+</body>
+</html>
